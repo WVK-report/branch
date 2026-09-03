@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>월드비전 식수사업 리포트</title>
+  <!-- 카카오 JS SDK: 정식 카카오톡 공유하기(Kakao.Share)를 쓰기 위함 (v2.8.1) -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js" integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J" crossorigin="anonymous"></script>
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #f2f2f2; }
+    iframe { border: none; width: 100%; height: 100%; }
+    .loading-text { 
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-family: sans-serif; color: #888; z-index: -1; 
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-text">리포트를 불러오는 중입니다...</div>
+  <iframe id="reportFrame" src="" allow="web-share"></iframe>
+  <script>
+    const googleWebAppUrl = "여기에_새로_배포한_exec_주소_입력";
+    const urlParams = new URLSearchParams(window.location.search);
+    const donationId = urlParams.get('id');
+    const reportFrame = document.getElementById('reportFrame');
+    if (donationId) {
+      const timestamp = new Date().getTime();
+      reportFrame.src = googleWebAppUrl + "?id=" + donationId + "&cachebust=" + timestamp + "&embedded=1&authuser=0";
+    } else {
+      document.body.innerHTML = "<div style='text-align:center; margin-top:50px;'><h1>잘못된 접근입니다.</h1><p>후원자 ID가 확인되지 않습니다.</p></div>";
+    }
+    // ↓↓↓ 카카오 디벨로퍼스에서 발급받은 JavaScript 키로 교체하세요 ↓↓↓
+    const KAKAO_JS_KEY = "2a06402bffbfd011de0c92d6a8a3989a";
+    if (window.Kakao && !Kakao.isInitialized()) {
+      Kakao.init(KAKAO_JS_KEY);
+    }
+    // 진단용: 문제가 생기면 F12(개발자 도구) > Console 탭에서 이 로그를 확인하세요.
+    if (!window.Kakao) {
+      console.warn('[카카오 SDK 진단] window.Kakao가 없습니다 = SDK 스크립트 자체가 로드되지 않았습니다. <script> 주소가 최신인지 확인 필요.');
+    } else if (!Kakao.isInitialized()) {
+      console.warn('[카카오 SDK 진단] Kakao 객체는 있는데 초기화가 안 됐습니다. KAKAO_JS_KEY 값을 확인하세요.');
+    } else {
+      console.log('[카카오 SDK 진단] 정상적으로 로드 및 초기화되었습니다.');
+    }
+
+    // 앱스크립트(HtmlService)가 iframe 콘텐츠를 실제로 서빙하는 도메인은
+    // script.google.com이 아니라 구글의 샌드박스 도메인(*.googleusercontent.com)입니다.
+    // 이 도메인은 구글이 전적으로 통제하므로, 접미사로 신뢰 여부를 판단합니다.
+    function isTrustedOrigin(origin) {
+      return /^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(origin);
+    }
+    window.addEventListener('message', function(e) {
+      if (!isTrustedOrigin(e.origin)) return;
+      const data = e.data;
+      if (data.type === 'SHARE') {
+        fnKakaoShare(data.title, data.text, data.url, data.imageUrl);
+      } else if (data.type === 'COPY') {
+        fnParentCopy(data.url);
+      }
+    });
+    function fnKakaoShare(title, text, url, imageUrl) {
+      if (window.Kakao && Kakao.isInitialized()) {
+        try {
+          Kakao.Share.sendDefault({
+            objectType: 'feed',
+            content: {
+              title: title,
+              description: text,
+              imageUrl: imageUrl,
+              link: { mobileWebUrl: url, webUrl: url }
+            },
+            buttons: [
+              { title: '리포트 보기', link: { mobileWebUrl: url, webUrl: url } }
+            ]
+          });
+          return;
+        } catch (err) {
+          console.error('[카카오 공유 진단] Kakao.Share.sendDefault 호출 중 에러:', err);
+        }
+      } else {
+        console.warn('[카카오 공유 진단] SDK가 준비되지 않아 기본 공유창으로 대체합니다.');
+      }
+      // SDK 로드/초기화/호출 실패 시 예전 방식(OS 공유창)으로 대체
+      fnParentShare(title, text, url);
+    }
+    async function fnParentShare(title, text, url) {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: title,
+            text: text,
+            url: url
+          });
+          console.log('공유 성공');
+        } catch (err) {
+          console.log('공유 실패 또는 취소:', err);
+          if(err.name !== 'AbortError') fnParentCopy(url);
+        }
+      } else {
+        fnParentCopy(url);
+      }
+    }
+    function fnParentCopy(url) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert("리포트 주소가 복사되었습니다!");
+        }).catch(() => {
+          fallbackCopyText(url);
+        });
+      } else {
+        fallbackCopyText(url);
+      }
+    }
+    function fallbackCopyText(url) {
+      const t = document.createElement("textarea");
+      document.body.appendChild(t);
+      t.value = url;
+      t.select();
+      document.execCommand("copy");
+      document.body.removeChild(t);
+      alert("리포트 주소가 복사되었습니다!");
+    }
+  </script>
+</body>
+</html>
